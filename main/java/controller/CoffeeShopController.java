@@ -1,16 +1,14 @@
 package controller;
 
-import java.util.ArrayList;
-import java.util.List;
-
-import model.MenuItem;
-import model.Kopi;
-import model.Teh;
-import model.Roti;
-import model.EnumUkuran;
-import exception.StokTidakCukupException;
-import exception.MenuTidakDitemukanException;
 import exception.InputTidakValidException;
+import exception.MenuTidakDitemukanException;
+import exception.StokTidakCukupException;
+import java.util.ArrayList;
+import model.EnumUkuran;
+import model.Kopi;
+import model.MenuItem;
+import model.Roti;
+import model.Teh;
 import view.CoffeeShopView;
 
 public class CoffeeShopController {
@@ -62,4 +60,106 @@ public class CoffeeShopController {
         }
     }
 
-    
+    private MenuItem cariMenu(String id) {
+        for (MenuItem menu : daftarMenu) {
+            if (menu.getId().equalsIgnoreCase(id)) {
+                return menu;
+            }
+        }
+
+        throw new MenuTidakDitemukanException(
+            "Menu ber-ID " + id + " ndak ketemu mas"
+        );
+    }
+
+    private void pesanMenu() {
+        MenuItem menu;
+
+        while (true) {
+            view.tampilkanMenu(daftarMenu);
+            String id = view.inputTeks("Masukkan ID menunya: ");
+
+            try {
+                menu = cariMenu(id);
+                break;
+            } catch (MenuTidakDitemukanException e) {
+                view.tampilkanPesan(e.getMessage());
+                view.tampilkanPesan("Masukin Idnya lagi maseh");
+            }
+        }
+
+        int jumlah;
+
+        while (true) {
+            jumlah = view.inputAngka("Jumlah pesanan: ");
+
+            try {
+                if (jumlah <= 0) {
+                    throw new InputTidakValidException(
+                        "Jumlah pesanan harus lebih dari 0 woe"
+                    );
+                }
+
+                if (jumlah > menu.getStok()) {
+                    throw new StokTidakCukupException(
+                        "Stok ga cukup ya mas, Stok tersedia: " + menu.getStok()
+                    );
+                }
+
+                break;
+            } catch (InputTidakValidException |
+                     StokTidakCukupException e) {
+                view.tampilkanPesan(e.getMessage());
+            }
+        }
+
+        try {
+            view.inputKustomisasi(menu);
+
+            double total;
+            String kodePromo = view.inputTeks(
+                "Masukkan kode promo (Enter aja mas kalau ndak ada): "
+            );
+
+            if (menu instanceof Kopi || menu instanceof Teh) {
+                EnumUkuran ukuran = view.inputUkuran();
+
+                total = menu.hitungHargaTotal(jumlah, ukuran);
+
+                if (kodePromo.equalsIgnoreCase("Icikiwir2026")) {
+                    total = total * 0.90;
+                } else if (kodePromo.equalsIgnoreCase("MasAmbaHeli")) {
+                    total = total * 0.85;
+                } else if (!kodePromo.isEmpty()) {
+                    view.tampilkanPesan(
+                        "Kode promo ndak valid. Harga normal ya maseh."
+                    );
+                    kodePromo = "";
+                }
+
+            } else {
+                total = menu.hitungHargaTotal(jumlah, kodePromo);
+
+                if (!kodePromo.isEmpty()
+                    && !kodePromo.equalsIgnoreCase("Icikiwir2026")
+                    && !kodePromo.equalsIgnoreCase("MasAmbaHeli")) {
+                    view.tampilkanPesan(
+                        "Kode promo ndak valid mas. Harga normal ya maseh."
+                    );
+                    kodePromo = "";
+                    total = menu.hitungHargaTotal(jumlah);
+                }
+            }
+
+            menu.kurangiStok(jumlah);
+
+            view.cetakStruk(menu, jumlah, total, kodePromo);
+
+        } catch (InputTidakValidException e) {
+            view.tampilkanPesan("Kustomisasi gagal: " + e.getMessage());
+            view.tampilkanPesan(
+                "Pesanan cancel ya mas. Stok ndak berubah."
+            );
+        }
+    }
+}
