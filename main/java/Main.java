@@ -8,5 +8,3 @@ public class Main {
         controller.mulai();
     }
 }
-
-icikiwir
